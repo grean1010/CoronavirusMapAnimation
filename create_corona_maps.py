@@ -132,6 +132,12 @@ alldata = alldata[cols_reorder]
 #######################################################################################
 ## Create a function to set county color based on value
 #######################################################################################
+#######################################################################################
+## Create a function to set county color based on value
+#######################################################################################
+#######################################################################################
+## Create a function to set county color based on value
+#######################################################################################
 
 def covid_colors(feature,var2map):
     
@@ -142,7 +148,7 @@ def covid_colors(feature,var2map):
         
     #print(f'var2map = {var2map}   test_value = {test_value}')
     
-    # Set the color scheme to be used in the map
+    # Set the delineation for the color scheme to be used in the map
     if var2map == 'Cases':
         color_list = case_colors
     elif var2map == 'Deaths':
@@ -151,40 +157,46 @@ def covid_colors(feature,var2map):
         color_list = cpm_colors
     elif var2map == 'Deaths Per Million':
         color_list = dpm_colors
-
+    elif var2map == 'New Cases':
+        color_list = ncase_colors
+    elif var2map == 'New Deaths':
+        color_list = ndeath_colors
+    elif var2map == 'New Cases Per Million':
+        color_list = ncpm_colors
+    elif var2map == 'New Deaths Per Million':
+        color_list = ndpm_colors
+            
     """Maps low values to green and high values to red."""
     if test_value > color_list[9]:
-        return '#a50026' 
+        return f'{scale2use[9]}'
     elif test_value > color_list[8]:
-        return '#d73027'
+        return f'{scale2use[8]}'
     elif test_value > color_list[7]:
-        return '#f46d43'
+        return f'{scale2use[7]}'
     elif test_value > color_list[6]:
-        return  '#fdae61' 
+        return f'{scale2use[6]}'
     elif test_value > color_list[5]:
-        return '#fee08b'
+        return f'{scale2use[5]}'
     elif test_value > color_list[4]:
-        return '#d9ef8b'
+        return f'{scale2use[4]}'
     elif test_value > color_list[3]:
-        return '#a6d96a'
+        return f'{scale2use[3]}'
     elif test_value > color_list[2]:
-        return '#66bd63'
+        return f'{scale2use[2]}'
     elif test_value > color_list[1]:
-        return '#1a9850' 
+        return f'{scale2use[1]}'
     elif test_value > color_list[0]:
-        return '#006837'
+        return f'{scale2use[0]}'
     else:
         return "#lightgray"
+   
        
 #######################################################################################
 ## Create a function to create a geojson file for each each point in time with all of
 ## the data we will use to create maps for that particular date.
 #######################################################################################
-def make_geofile(timepoint):
+def make_geofile(timepoint,previous_timepoint):
 
-    import datetime
-    import folium
-    import json
         
     # pull the year from the date variable
     year2check = int(timepoint[0:4])
@@ -195,7 +207,7 @@ def make_geofile(timepoint):
     json_output = os.path.join(clean_loc,f'CovidGeoFile{timepoint}.json')
     
     ratedata4timepoint = {}
-
+        
     # Loop through the dataframe and add information to the data2add dictionary. 
     # We will use this to put these values into the geojson.
     for row, rowvals in alldata.iterrows():
@@ -213,12 +225,34 @@ def make_geofile(timepoint):
         ratedata4timepoint[FIPS]['Population'] = rowvals[cols_reorder.index(f'population')]  
         ratedata4timepoint[FIPS]['Cases'] = rowvals[cols_reorder.index(f'cases_{timepoint}')]  
         ratedata4timepoint[FIPS]['Deaths'] = rowvals[cols_reorder.index(f'deaths_{timepoint}')]  
+                    
+        # Find the number of new cases/deaths by subtracting yesterday's total from today's
+        if previous_timepoint.find('X') == -1:
+            ratedata4timepoint[FIPS]['Previous Cases'] = rowvals[cols_reorder.index(f'cases_{previous_timepoint}')]  
+            ratedata4timepoint[FIPS]['Previous Deaths'] = rowvals[cols_reorder.index(f'deaths_{previous_timepoint}')]  
+            ratedata4timepoint[FIPS]['New Cases'] = max(rowvals[cols_reorder.index(f'cases_{timepoint}')] - rowvals[cols_reorder.index(f'cases_{previous_timepoint}')],0) 
+            ratedata4timepoint[FIPS]['New Deaths'] = max(rowvals[cols_reorder.index(f'deaths_{timepoint}')] - rowvals[cols_reorder.index(f'deaths_{previous_timepoint}')],0) 
+        else:
+            ratedata4timepoint[FIPS]['New Cases'] = 0
+            ratedata4timepoint[FIPS]['New Deaths'] = 0
+            
+        # Find cases/deaths per million population
         if rowvals[cols_reorder.index(f'population')] > 0:
-            ratedata4timepoint[FIPS]['Cases Per Million'] = rowvals[cols_reorder.index(f'cases_{timepoint}')]  / (rowvals[cols_reorder.index(f'population')] / 1000000)
-            ratedata4timepoint[FIPS]['Deaths Per Million'] = rowvals[cols_reorder.index(f'deaths_{timepoint}')]  / (rowvals[cols_reorder.index(f'population')] / 1000000) 
+            
+            ratedata4timepoint[FIPS]['Cases Per Million'] = round(rowvals[cols_reorder.index(f'cases_{timepoint}')]  / (rowvals[cols_reorder.index(f'population')] / 1000000),2)
+            ratedata4timepoint[FIPS]['Deaths Per Million'] = round(rowvals[cols_reorder.index(f'deaths_{timepoint}')]  / (rowvals[cols_reorder.index(f'population')] / 1000000) ,2)
+            
+            if previous_timepoint.find('X') == -1:
+                ratedata4timepoint[FIPS]['New Cases Per Million'] = round(ratedata4timepoint[FIPS]['New Cases'] / (rowvals[cols_reorder.index(f'population')] / 1000000),2)
+                ratedata4timepoint[FIPS]['New Deaths Per Million'] = round(ratedata4timepoint[FIPS]['New Deaths'] / (rowvals[cols_reorder.index(f'population')] / 1000000) ,2)
+            else:
+                ratedata4timepoint[FIPS]['New Cases Per Million'] = 0
+                ratedata4timepoint[FIPS]['New Deaths Per Million'] = 0
         else:
             ratedata4timepoint[FIPS]['Cases Per Million'] = 0
             ratedata4timepoint[FIPS]['Deaths Per Million'] = 0
+            ratedata4timepoint[FIPS]['New Cases Per Million'] = 0
+            ratedata4timepoint[FIPS]['New Deaths Per Million'] = 0
             
     # Add the data we will be mapping to the json file
     # Create a blank geojson that we will build up with the existing one plus the new information
@@ -241,17 +275,17 @@ def make_geofile(timepoint):
     with open(json_output, 'w') as f:
         json.dump(geojson, f)
 
+
 #######################################################################################
 ## Create a function to create a the html file containing maps with all of the 
 ## information in the tooltip and colored by the specified feature.
 #######################################################################################
-
 def make_map(timepoint,SaveName,var2map):
     
     # pull the year from the date variable
     year2check = int(timepoint[0:4])
 
-    # for years after 2000, we only have one input file per year labeled as year0101
+    # Note the file locations of input/output json, html, and png files
     json_input = os.path.join(clean_loc,f'FinalGeoFile{timepoint}.json')
     json_output = os.path.join(clean_loc,f'CovidGeoFile{timepoint}.json')
     save_html = os.path.join(map_html,f'{SaveName}_{timepoint}.html')
@@ -265,8 +299,8 @@ def make_map(timepoint,SaveName,var2map):
 
     # Create a list of fields to be included in the tooltip and a list of descriptions for those variables
     # Use the name of the variable to determine the tooltip list contents
-    tip_fields = ['CountyName','StateAbbr','Population','Cases','Deaths','Cases Per Million','Deaths Per Million']
-    tip_aliases = ['County Name:', 'State:','Population:',f'Cases {mdy}:',f'Deaths {mdy}:',f'Cases Per Million{mdy}:',f'Deaths Per Million {mdy}:']
+    tip_fields = ['CountyName','StateAbbr','Population','Cases','Previous Cases','New Cases','Deaths','Previous Deaths','New Deaths','Cases Per Million','New Cases Per Million','Deaths Per Million','New Deaths Per Million']
+    tip_aliases = ['County Name:', 'State:','Population:',f'Cases {mdy}:',f'Previous Cases:',f'New Cases:',f'Previous Deaths:',f'Deaths {mdy}:',f'New Deaths:',f'Cases Per Million:',f'New Cases Per Million:',f'Deaths Per Million:',f'New Deaths Per Million:']
 
     # Set the color scheme to be used in the map
     if var2map == 'Cases':
@@ -277,7 +311,15 @@ def make_map(timepoint,SaveName,var2map):
         color_list = cpm_colors
     elif var2map == 'Deaths Per Million':
         color_list = dpm_colors
-        
+    elif var2map == 'New Cases':
+        color_list = ncase_colors
+    elif var2map == 'New Deaths':
+        color_list = ndeath_colors
+    elif var2map == 'New Cases Per Million':
+        color_list = ncpm_colors
+    elif var2map == 'New Deaths Per Million':
+        color_list = ndpm_colors
+  
     #print(color_list)
     
    
@@ -316,16 +358,16 @@ def make_map(timepoint,SaveName,var2map):
                      color: 'black';">
 
 
-         <i style="background: #a50026"> &nbsp &nbsp</i> {color_list[9]}+ <br>
-         <i style="background: #d73027"> &nbsp &nbsp</i> {color_list[8]} - {color_list[9]}<br>
-         <i style="background: #f46d43"> &nbsp &nbsp</i> {color_list[7]} - {color_list[8]}<br>
-         <i style="background: #fdae61"> &nbsp &nbsp</i> {color_list[6]} - {color_list[7]}<br>
-         <i style="background: #fee08b"> &nbsp &nbsp</i> {color_list[5]} - {color_list[6]}<br>
-         <i style="background: #d9ef8b"> &nbsp &nbsp</i> {color_list[4]} - {color_list[5]}<br>
-         <i style="background: #a6d96a"> &nbsp &nbsp</i> {color_list[3]} - {color_list[4]}<br>
-         <i style="background: #66bd63"> &nbsp &nbsp</i> {color_list[2]} - {color_list[3]}<br>
-         <i style="background: #1a9850"> &nbsp &nbsp</i> {color_list[1]} - {color_list[2]}<br>
-         <i style="background: #006837"> &nbsp &nbsp</i> 0<br>
+         <i style="background: {scale2use[9]}"> &nbsp &nbsp</i> {color_list[9]}+ <br>
+         <i style="background: {scale2use[8]}" > &nbsp &nbsp</i> {color_list[8]} - {color_list[9]}<br>
+         <i style="background: {scale2use[7]}"> &nbsp &nbsp</i> {color_list[7]} - {color_list[8]}<br>
+         <i style="background: {scale2use[6]}"> &nbsp &nbsp</i> {color_list[6]} - {color_list[7]}<br>
+         <i style="background: {scale2use[5]}"> &nbsp &nbsp</i> {color_list[5]} - {color_list[6]}<br>
+         <i style="background: {scale2use[4]}"> &nbsp &nbsp</i> {color_list[4]} - {color_list[5]}<br>
+         <i style="background: {scale2use[3]}"> &nbsp &nbsp</i> {color_list[3]} - {color_list[4]}<br>
+         <i style="background: {scale2use[2]}"> &nbsp &nbsp</i> {color_list[2]} - {color_list[3]}<br>
+         <i style="background: {scale2use[1]}"> &nbsp &nbsp</i> {color_list[1]} - {color_list[2]}<br>
+         <i style="background: {scale2use[0]}"> &nbsp &nbsp</i> 0<br>
           </div>
          '''
 
@@ -370,21 +412,32 @@ def make_map(timepoint,SaveName,var2map):
 #######################################################################################
 ## Set color schemes for the different maps
 #######################################################################################
-case_colors = [-1,1,25,50,75,100,250,500,1000,1500]
-death_colors = [-1,1,5,10,25,40,75,100,150,200,250]
-cpm_colors = [-1,1,50,100,250,500,1000,2500,5000,10000,20000]
-dpm_colors = [-1,1,3,7,10,20,45,75,100,250,500,1000,2500,5000,10000]
-    
+purple_scale =    ['#ffffff','#fcfbfd','#efedf5','#dadaeb','#bcbddc','#9e9ac8','#807dba','#6a51a3','#54278f','#3f007d']
+green_red_scale = ['#a50026','#d73027','#f46d43','#fdae61','#fee08b','#d9ef8b','#a6d96a','#66bd63','#1a9850','#006837']
+
+scale2use = purple_scale
+
+case_colors = [-1,1,10,25,50,75,100,250,500,1000,1500]
+death_colors = [-1,1,3,5,7,10,15,20,35,50,75,100,150,200,250]
+cpm_colors = [-1,1,50,75,100,250,500,1000,2500,5000,10000,20000]
+dpm_colors = [-1,1,3,7,10,15,20,45,75,100,250,500,1000,2500,5000,10000]
+ncase_colors = [-1,1,3,5,7,10,15,25,40,60,85,100,200,400]
+ndeath_colors = [-1,1,2,4,6,8,11,15,20,25,35,50,75,100]
+ncpm_colors = [-1,1,5,8,13,25,35,50,75,100,200]
+ndpm_colors = [-1,1,2,3,4,5,7,9,12,17,23,29,38,50]
+
 #######################################################################################
 ## Create maps for each day
 #######################################################################################
-for month in range(1,13):
+for month in range(3,13):
     
+    # find two-digit month as character
     if month < 10:
         mm = f'0{month}'
     else:
         mm = f'{month}'
-
+  
+    # Set the first and last day of each month and previous month.
     # Our data start on 1/22/2020. Set the first day of January to the 22nd.  All others to 1.
     if month == 1:
         firstday = 22
@@ -405,8 +458,41 @@ for month in range(1,13):
         else:
             dd = f'{day}'
 
-        make_geofile(f'2020{mm}{dd}')
-        make_map(f'2020{mm}{dd}','CovidCaseMap','Cases')
-        make_map(f'2020{mm}{dd}','CovidDeathMap','Deaths')
-        make_map(f'2020{mm}{dd}','CovidCasesPerMillionMap','Cases Per Million')
-        make_map(f'2020{mm}{dd}','CovidDeathsPerMillionMap','Deaths Per Million')
+        if day == firstday:
+            pmonth = month - 1
+
+            if pmonth in (1,3,5,7,8,10,12):
+                pday = 31
+            elif month in (4,6,9,11):
+                pday = 30
+            else:
+                pday = 29
+        else:
+            pmonth = month
+            pday = day - 1
+        
+        # Get the previous month, 2-digits as character. Set to XX if this is month 1.
+        if pmonth == 0:
+            pmm = 'XX'
+        elif pmonth < 10:
+            pmm = f'0{pmonth}'
+        else:
+            pmm = f'{pmonth}'
+
+        if pmm == 'XX':
+            pdd = 'XX'
+        elif pday < 10:
+            pdd = f'0{pday}'
+        else:
+            pdd = f'{pday}'
+
+        print(f'Day: 2020{mm}{dd}  Previous Day: 2020{pmm}{pdd}')
+        make_geofile(f'2020{mm}{dd}',f'2020{pmm}{pdd}')
+        #make_map(f'2020{mm}{dd}','CovidCaseMap','Cases')
+        #make_map(f'2020{mm}{dd}','CovidDeathMap','Deaths')
+        #make_map(f'2020{mm}{dd}','CovidCasesPerMillionMap','Cases Per Million')
+        #make_map(f'2020{mm}{dd}','CovidDeathsPerMillionMap','Deaths Per Million')
+        make_map(f'2020{mm}{dd}','NewCovidCaseMap','New Cases')
+        make_map(f'2020{mm}{dd}','NewCovidDeathMap','New Deaths')
+        make_map(f'2020{mm}{dd}','NewCovidCasesPerMillionMap','New Cases Per Million')
+        make_map(f'2020{mm}{dd}','NewCovidDeathsPerMillionMap','New Deaths Per Million')

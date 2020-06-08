@@ -65,5 +65,10 @@ def animate_map(name2find,fileout,fpsvalue):
 
 #animate_map('CovidCaseMap','CovidCaseMap_Animation',1)
 #animate_map('CovidDeathMap','CovidDeathMap_Animation',1)
-animate_map('CovidCasesPerMillionMap','CovidCasesPerMillionMap_Animation',1)
-animate_map('CovidDeathsPerMillionMap','CovidDeathsPerMillionMap_Animation',1)
+#animate_map('CovidCasesPerMillionMap','CovidCasesPerMillionMap_Animation',1)
+#animate_map('CovidDeathsPerMillionMap','CovidDeathsPerMillionMap_Animation',1)
+
+#animate_map('NewCovidCaseMap','NewCovidCaseMap_Animation',1)
+#animate_map('NewCovidDeathMap','NewCovidDeathMap_Animation',1)
+#animate_map('NewCovidCasesPerMillionMap','NewCovidCasesPerMillionMap_Animation',1)
+animate_map('NewCovidDeathsPerMillionMap','NewCovidDeathsPerMillionMap_Animation',1)
